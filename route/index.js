@@ -2,25 +2,32 @@ const { Router } = require('express');
 const routes = Router();
 const conection = require('../conection.js');
 const { getUsers } = require('../model/user.js');
+const jwt = require('jsonwebtoken')
+const { llave } = require('../config');
 
 routes.get('/users', async(req, res) => { // obtener todos los usuarios 
   const all = await conection.query('SELECT users.user_id, users.name, users.last_name FROM users');
   console.log(all.rows);
   res.status(200).json(all.rows); 
 });
+// promesas
 
 routes.post('/login', async(req, res) => { // incio de sesion comprobar si existe utilizandp midellware 
   let { name , password} = req.body;
   let sesion = await conection.query('SELECT sesion.id_user FROM sesion where sesion.name = $1 and sesion.password = $2',[name, password]);
   let aux = sesion.rows;
   if (aux.length === 0) {
-    return res.status(406).json({
+    return res.status(200).json({
       message : "not found user",
       codigo:406
     });
   }
-  return res.status(200).json(sesion.rows);
+  return res.status(200).json(aux);
 })
+ // let token = jwt.TokenExpiredError( aux, llave);
+  // res.header.json(token);
+  // console.log(`${llave}`);
+  // aux.prototype("token", llave);
 
 routes.post('/createUser', async (req, res) => { // crear usuarios // comprobar si el usuario existe se puede implementar como un midelware
   let { type_user, name, last_name, email, fechaNacimiento, userName, password} = req.body;
@@ -61,9 +68,11 @@ routes.get('/document/:id', (req, res) => { // obtener documentos por id
 
 });
 
-routes.get('/documents', (req, res) => { // acceder a todos los documentos 
-  console.log('puedo acceder a todos los documentos');
-  res.json({id:4});
+routes.get('/documents', async(req, res) => { // acceder a todos los documentos 
+
+  let documents = await conection.query("SELECT * FROM document");
+  console.log(documents);
+  res.status(200).json(documents.rows);
 });
 
 routes.get('/allDocuments/:id', async(req, res) => {

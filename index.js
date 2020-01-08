@@ -1,11 +1,12 @@
 const express = require('express')
 const bodyParser = require('body-parser')
-const jwt = require('jsonwebtoken')
+const cors = require('cors');
 const app = express()
 const port = 3000
 
 // app.use(bodyParser.json())
 app.use(express.json());
+app.use(cors());
 app.use(express.urlencoded( { extended: true} ));
 app.use(require('./route/index.js'));
 // const conection = require('./conection.js');/
