@@ -6,11 +6,10 @@ const jwt = require('jsonwebtoken')
 const { llave } = require('../config');
 
 routes.get('/users', async(req, res) => { // obtener todos los usuarios 
-  const all = await conection.query('SELECT users.user_id, users.name, users.last_name FROM users');
+  const all = await conection.query('SELECT  users.user_id, users.name, users.last_name FROM users');
   console.log(all.rows);
   res.status(200).json(all.rows); 
 });
-// promesas
 
 routes.post('/login', async(req, res) => { // incio de sesion comprobar si existe utilizandp midellware 
   let { name , password} = req.body;
@@ -22,12 +21,11 @@ routes.post('/login', async(req, res) => { // incio de sesion comprobar si exist
       codigo:406
     });
   }
-  return res.status(200).json(aux);
+  let rol = await conection.query('SELECT users.id_type FROM users WHERE users.user_id = $1', [aux[0].id_user]);
+  let token = jwt.sign( aux[0], llave); // crearcion de un token usando jwt
+  let object = {token, user:aux[0].id_user, rol: rol.rows[0].id_type};
+  return res.status(200).json(object);
 })
- // let token = jwt.TokenExpiredError( aux, llave);
-  // res.header.json(token);
-  // console.log(`${llave}`);
-  // aux.prototype("token", llave);
 
 routes.post('/createUser', async (req, res) => { // crear usuarios // comprobar si el usuario existe se puede implementar como un midelware
   let { type_user, name, last_name, email, fechaNacimiento, userName, password} = req.body;
@@ -61,22 +59,45 @@ routes.post('/createDocument', async(req, res) =>{ // crear documentos de usuari
   });
 });
 
-routes.get('/document/:id', (req, res) => { // obtener documentos por id
-  let idUser = req.params.id;
-  console.log(idUser);
-  res.json({ idUser });
+function ensureToken (req, res, next) {
+  console.log(req.headers);
+  let token = req.headers['authorization'];
+  if(typeof token === 'undefined'){
+    return res.status(200).json({
+      message: "you not be access",
+      codido:401
+    });
+  }
+  next();
+};
 
+// routes.get('/document/:id', async(req, res) => {
+routes.get('/document/:id', ensureToken, async(req, res) => { // obtener documentos por id
+  let idUser = req.params.id;
+  let document = await conection.query('SELECT document.document_id, userdocuments.description, document.titulo, document.create_date FROM userdocuments, document WHERE userdocuments.id_document = document.document_id and userdocuments.id_user=$1',[idUser]);
+  // console.log(document.rows);
+  let aux = document.rows;
+  if(aux.length === 0){
+    return res.status(200).json({
+      message: "not found documents"
+    });
+  }
+  res.status(200).json(document.rows);
 });
 
-routes.get('/documents', async(req, res) => { // acceder a todos los documentos 
+routes.get('/rol', async(req, res) => {
+  let roles = await conection.query("SELECT name_type FROM type_users");  
+  res.status(200).json(roles.rows);
+});
 
+
+routes.get('/documents', async(req, res) => { // acceder a todos los documentos 
   let documents = await conection.query("SELECT * FROM document");
-  console.log(documents);
+  console.log(documents.rows);
   res.status(200).json(documents.rows);
 });
 
 routes.get('/allDocuments/:id', async(req, res) => {
-  console.log("primeros juegos con este tipo de cosas ");
   let user = req.params.id;
   let documents = await conection.query("SELECT d.document_id, d.titulo, d.route, d.create_date, userDocuments.description FROM document as d, userDocuments WHERE d.document_id = userDocuments.id_document and userDocuments.id_user = $1", [user]);
   console.log(documents.rows.length);
